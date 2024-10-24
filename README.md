@@ -72,7 +72,7 @@ Mac/Linux下执行命令激活环境 `. venv/bin/activate`
 2. 打开视频翻译软件，找到菜单-TTS设置-F5-TTS，填写api地址，如果未修改过地址，填写`http://127.0.0.1:5010`
 3. 填写参考音频和音频内文本
 
-![](/img/f5002.jpg)
+![](https://pyvideotrans.com/img/f5002.jpg)
 
 
 
