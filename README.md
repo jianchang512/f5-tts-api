@@ -48,13 +48,8 @@ Mac/Linux下执行命令激活环境 `. venv/bin/activate`
 
 2. 启动webui服务：双击 `run-webui.bat`, 自动打开浏览器页面  `http://localhost:5000`.
 
->
-> 整合包默认不支持GPU加速，如果需要GPU加速， 请确认拥有英伟达显卡，并且已安装配置好CUDA环境，然后在当前api.py所在文件夹内地址栏中，输入`cmd`回车，在打开的终端窗口中分别执行下面2条命令
->
-> ` .\runtime\python -m pip uninstall -y torch torchaudio`
->
-> ` .\runtime\python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118`
->
+> 整合包默认使用 cuda11.8版本，若有英伟达显卡，并且已安装配置好CUDA/cuDNN环境，将自动使用GPU加速
+
 
 
 

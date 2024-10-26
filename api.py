@@ -5,6 +5,7 @@ os.environ['HF_HOME']=Path(os.path.dirname(__file__)+"/modelscache").as_posix()
 Path(os.environ['HF_HOME']).mkdir(parents=True, exist_ok=True)
 import re
 import torch
+from torch.backends import cudnn
 import torchaudio
 import numpy as np
 from flask import Flask, request, jsonify, send_file, render_template
@@ -65,11 +66,17 @@ SPLIT_WORDS = [
 ]
 
 # Keep device selection at the top
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps" if torch.backends.mps.is_available() else "cpu"
-)
+device = "cpu"
+
+if torch.cuda.is_available():
+    if not cudnn.is_available() or not  cudnn.is_acceptable(torch.tensor(1.).cuda()):
+        print(f'\nCUDA可用但 cuDNN不可用，部分操作仍在CPU\n')
+    else:
+        device='cuda:0'
+else:
+    print(f"\nCUDA不可用，使用CPU\n")
+
+print(f'\n当前使用设备： {device}\n')
 
 # Remove the lazy loading functions and initialize directly
 whisper_model = WhisperModel(MODEL_NAME, device=device, compute_type="int8")
@@ -396,8 +403,10 @@ def infer(ref_audio_orig, ref_text, gen_text, model, remove_silence, custom_spli
 
 if __name__ == '__main__':
     try:
-        print(f"Using {device} device")
-        serve(app,host='127.0.0.1', port=5010)
+        host="127.0.0.1"
+        port=5010
+        print(f"api接口地址  http://{host}:{port}")
+        serve(app,host=host, port=port)
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         logger.error(traceback.format_exc())
