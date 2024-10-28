@@ -69,17 +69,16 @@ SPLIT_WORDS = [
 device = "cpu"
 
 if torch.cuda.is_available():
+    device='cuda'
     if not cudnn.is_available() or not  cudnn.is_acceptable(torch.tensor(1.).cuda()):
         print(f'\nCUDA可用但 cuDNN不可用，部分操作仍在CPU\n')
-    else:
-        device='cuda:0'
 else:
     print(f"\nCUDA不可用，使用CPU\n")
 
 print(f'\n当前使用设备： {device}\n')
 
 # Remove the lazy loading functions and initialize directly
-whisper_model = WhisperModel(MODEL_NAME, device=device, compute_type="int8")
+whisper_model = WhisperModel(MODEL_NAME, device=device)
 vocos = Vocos.from_pretrained("charactr/vocos-mel-24khz")
 
 # Add this near the top of the file, after other imports
@@ -378,7 +377,7 @@ def infer(ref_audio_orig, ref_text, gen_text, model, remove_silence, custom_spli
     if not ref_text.strip():
         if ref_audio:
             print("No reference text provided, transcribing reference audio...")
-            segments, info = whisper_model.transcribe(ref_audio, beam_size=5)
+            segments, info = whisper_model.transcribe(ref_audio, beam_size=5,best_of=5,condition_on_previous_text=False,temperature=0.0,vad_filter=False)
             ref_text = " ".join([segment.text for segment in segments])
             print("Finished transcription")
         else:
