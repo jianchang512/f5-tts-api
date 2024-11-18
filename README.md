@@ -13,7 +13,7 @@
 
 ## 整合包部署5G(包含f5-tts模型及环境)
 
-整合包下载地址 百度网盘地址: https://pan.baidu.com/s/1u2fOau7KRKSv_c7k5YCdug?pwd=5f8p
+整合包下载地址 123 网盘地址: https://www.123684.com/s/03Sxjv-kKjB3
 
 > 整合包仅可用于 Windows10/11, 下载后解压即用
 
