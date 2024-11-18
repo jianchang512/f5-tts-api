@@ -1,10 +1,10 @@
 import requests
 
 res=requests.post('http://127.0.0.1:5010/api',data={
-    "ref_text": '古老星系中发现了有机分子，我们离第三类接触还有多远呢',
-    "gen_text": '今天是个好日子，外面下了大暴雨，海水也冲上了岸。',
+    "gen_text": '这是一个开源免费的视频翻译配音软件，可将一种语言发音的视频，翻译为另一种语言发音的视频，并嵌入该语言字幕。',
+    "ref_text": '你说四大皆空，却为何紧闭双眼，若你睁开眼睛看看我，我不相信你两眼空空。',
     "model": 'f5-tts'
-},files={"audio":open('c:/users/c1/videos/5s.wav','rb')})
+},files={"audio":open('./1.wav','rb')})
 
 if res.status_code!=200:
     print(res.text)
@@ -12,3 +12,6 @@ if res.status_code!=200:
 
 with open("ceshi.wav",'wb') as f:
     f.write(res.content)
+    
+    
+    

@@ -11,6 +11,8 @@ modelscache/
 runtime/
 run-test.bat
 *.7z
+./*.mp3
+./*.wav
 
 
 # Byte-compiled / optimized / DLL files

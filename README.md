@@ -1,6 +1,6 @@
 # F5-TTS-api
 
-这是用于 [F5-TTS](https://github.com/SWivid/F5-TTS) 项目的api和webui，fork自 [ThisModernDay](https://github.com/ThisModernDay/f5-tts)
+这是用于 [F5-TTS](https://github.com/SWivid/F5-TTS) 项目的api和webui封装
 
 > F5-TTS是由上海交通大学开源的一款基于流匹配的全非自回归文本到语音转换系统（Text-to-Speech，TTS）。它以其高效、自然和多语言支持的特点脱颖而出
 
@@ -9,6 +9,19 @@
 - 提供api接口文件 `api.py`，可对接于视频翻译项目 [pyvideotrans](https://github.com/jianchang512/pyvideotrans)
 - 提供webui界面，可在浏览器中进行声音克隆
 - 提供windows下整合包
+
+
+## 整合包部署5G(包含f5-tts模型及环境)
+
+整合包下载地址 百度网盘地址: https://pan.baidu.com/s/1u2fOau7KRKSv_c7k5YCdug?pwd=5f8p
+
+> 整合包仅可用于 Windows10/11, 下载后解压即用
+
+1. 启动Api服务:  双击 `run-api.bat`，接口地址是 `http://127.0.0.1:5010/api`
+
+2. 启动webui服务：双击 `run-webui.bat`, 启动成功后，请手动打开浏览器页面  `http://127.0.0.1:7860`.
+
+> 整合包默认使用 cuda11.8版本，若有英伟达显卡，并且已安装配置好CUDA/cuDNN环境，将自动使用GPU加速
 
 ## 源码部署
 
@@ -35,29 +48,13 @@ Mac/Linux下执行命令激活环境 `. venv/bin/activate`
 
 4. 启动api服务:   `python api.py`，接口地址是 `http://127.0.0.1:5010/api`
 
-5. 启动webui服务  `python webui.py`,在浏览器中打开  `http://localhost:5000`.
-
-
-## 整合包部署5G(包含f5-tts模型和medium模型及环境)
-
-整合包下载地址 百度网盘地址: https://pan.baidu.com/s/1u2fOau7KRKSv_c7k5YCdug?pwd=5f8p
-
-> 整合包仅可用于 Windows10/11, 下载后解压即用
-
-1. 启动Api服务:  双击 `run-api.bat`，接口地址是 `http://127.0.0.1:5010/api`
-
-2. 启动webui服务：双击 `run-webui.bat`, 自动打开浏览器页面  `http://localhost:5000`.
-
-> 整合包默认使用 cuda11.8版本，若有英伟达显卡，并且已安装配置好CUDA/cuDNN环境，将自动使用GPU加速
-
+5. 启动webui服务  `python webui.py`,在浏览器中打开  `http://127.0.0.1:7860`.
 
 
 
 ## 使用注意/代理VPN
 
-1. 声音克隆中，需要用到 asr 模型，默认使用 faster-whisper 的 medium 模型，该模型不是效果最佳的，若需提升效果，可修改为`large`模型，打开 `api.py`文件和`webui.py`文件，找到第一行，将 `medium`修改为`large`，注意large模型对计算机资源要求较高，如果设备性能不佳，可能会卡死或非常缓慢
-
-2. asr模型需要从 `huggingface.co`网站在线下载，该站点无法在国内访问，如果你是源码部署，或者整合包部署但修改了默认模型`medium`，将会从 `huggingface.co`在线下载，请提前开启系统代理或全局代理，否则模型会下载失败
+1. 模型需要从 `huggingface.co`网站在线下载，该站点无法在国内访问，请提前开启系统代理或全局代理，否则模型会下载失败
 
 
 
@@ -78,10 +75,10 @@ Mac/Linux下执行命令激活环境 `. venv/bin/activate`
 import requests
 
 res=requests.post('http://127.0.0.1:5010/api',data={
-    "ref_text": '古老星系中发现了有机分子，我们离第三类接触还有多远呢',
-    "gen_text": '今天是个好日子，外面下了大暴雨，海水也冲上了岸。',
+    "ref_text": '这里填写 1.wav 中对应的文字内容',
+    "gen_text": '''这里填写要生成的文本。''',
     "model": 'f5-tts'
-},files={"audio":open('c:/users/c1/videos/5s.wav','rb')})
+},files={"audio":open('./1.wav','rb')})
 
 if res.status_code!=200:
     print(res.text)
