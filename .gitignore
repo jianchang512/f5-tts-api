@@ -2,7 +2,6 @@
 .vscode/
 tests/
 runs/
-data/
 ckpts/
 wandb/
 results/
@@ -13,6 +12,7 @@ run-test.bat
 *.7z
 ./*.mp3
 ./*.wav
+docs
 
 
 # Byte-compiled / optimized / DLL files
