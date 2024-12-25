@@ -1,8 +1,20 @@
 
-import os,time
+import os,time,sys
 from pathlib import Path
-os.environ['HF_HOME']=Path(os.path.dirname(__file__)+"/modelscache").as_posix()
-Path(os.environ['HF_HOME']).mkdir(parents=True, exist_ok=True)
+ROOT_DIR=Path(__file__).parent.as_posix()
+
+# ffmpeg
+if sys.platform == 'win32':
+    os.environ['PATH'] = ROOT_DIR + f';{ROOT_DIR}\\ffmpeg;' + os.environ['PATH']
+else:
+    os.environ['PATH'] = ROOT_DIR + f':{ROOT_DIR}/ffmpeg:' + os.environ['PATH']
+
+SANFANG=True
+if Path(f"{ROOT_DIR}/modelscache").exists():
+    SANFANG=False
+    os.environ['HF_HOME']=Path(f"{ROOT_DIR}/modelscache").as_posix()
+
+
 import re
 import torch
 from torch.backends import cudnn
@@ -22,7 +34,8 @@ import tempfile
 import logging
 import traceback
 from waitress import serve
-
+from importlib.resources import files
+from omegaconf import OmegaConf
 
 from f5_tts.infer.utils_infer import (
     infer_process,
@@ -56,9 +69,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 def load_model2(repo_name='F5-TTS',vocoder_name='vocos'):
     mel_spec_type = vocoder_name
-    
+    model_cfg =  f"{ROOT_DIR}/configs/F5TTS_Base_train.yaml"
+
+    model_cfg = OmegaConf.load(model_cfg).model.arch
     model_cls = DiT
-    model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+
     ckpt_file = ""
     vocab_file=''
     remove_silence=False
@@ -69,7 +84,7 @@ def load_model2(repo_name='F5-TTS',vocoder_name='vocos'):
             exp_name = "F5TTS_Base"
             ckpt_step = 1200000
             ckpt_file = str(cached_path(f"hf://SWivid/{repo_name}/{exp_name}/model_{ckpt_step}.safetensors"))
-            # ckpt_file = f"ckpts/{exp_name}/model_{ckpt_step}.pt"  # .pt | .safetensors; local path
+
         elif vocoder_name == "bigvgan":
             repo_name = "F5-TTS"
             exp_name = "F5TTS_Base_bigvgan"
@@ -100,11 +115,11 @@ def api():
     ref_text = request.form.get('ref_text')
     gen_text = request.form.get('gen_text')
     remove_silence = int(request.form.get('remove_silence',0))
+    
     speed = float(request.form.get('speed',1.0))
-    model_choice = request.form.get('model','F5-TTS').upper()
+    model_choice = 'F5-TTS'
     vocoder_name = request.form.get('vocoder_name','vocos')
-    if model_choice=='E2-TTS':
-        vocoder_name='vocos'
+
     
     if not all([ref_text, gen_text, model_choice]):  # Include audio_filename in the check
         return jsonify({"error": "Missing required parameters"}), 400
@@ -120,18 +135,21 @@ def api():
     audio_file.save(audio_name)
     
     try:
-        # Load the model if it's not already loaded
+
         if model_choice not in loaded_models:
             loaded_models[model_choice] = load_model2(repo_name=model_choice)
 
-        # Get the loaded model
+
         model = loaded_models[model_choice]
         if vocoder_name == "vocos":
-            vocoder_local_path = "./checkpoints/vocos-mel-24khz"
+            
+            vocoder = load_vocoder(vocoder_name=vocoder_name,
+                is_local=True if not SANFANG else False, 
+                local_path='./modelscache/hub/models--charactr--vocos-mel-24khz/snapshots/0feb3fdd929bcd6649e0e7c5a688cf7dd012ef21/' if not SANFANG else None
+            )
         elif vocoder_name == "bigvgan":
-            vocoder_local_path = "./checkpoints/bigvgan_v2_24khz_100band_256x"
+            vocoder = load_vocoder(vocoder_name=vocoder_name, is_local=False, local_path="./checkpoints/bigvgan_v2_24khz_100band_256x")
 
-        vocoder = load_vocoder(vocoder_name=vocoder_name, is_local=False, local_path=vocoder_local_path)
         
         main_voice = {"ref_audio": audio_name, "ref_text": ref_text}
         voices = {"main": main_voice}
@@ -179,7 +197,6 @@ def api():
         print(f'{wave_path=}')
         with open(wave_path, "wb") as f:
             sf.write(f.name, final_wave, final_sample_rate)
-            # Remove silence
             if remove_silence==1:
                 remove_silence_for_generated_wav(f.name)
             print(f.name)
@@ -190,6 +207,101 @@ def api():
         logger.error(f"Error generating audio: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 500        
 
+
+
+@app.route('/v1/audio/speech', methods=['POST'])
+def audio_speech():
+    """
+    兼容 OpenAI /v1/audio/speech API 的接口
+    """
+    if not request.is_json:
+        return jsonify({"error": "请求必须是 JSON 格式"}), 400
+
+    data = request.get_json()
+
+    # 检查请求中是否包含必要的参数
+    if 'input' not in data or 'voice' not in data:
+        return jsonify({"error": "请求缺少必要的参数： input, voice"}), 400
+    
+
+    gen_text = data.get('input')
+    speed = float(data.get('speed',1.0))
+    
+    # 参考音频
+    voice = data.get('voice','')
+    
+    audio_file,ref_text=voice.split('###')
+
+    if not Path(audio_file).exists() or not Path(f'{ROOT_DIR}/{audio_file}').exists():
+        return jsonify({"error": {"message": f"必须填写'参考音频路径###参考音频文本'", "type": e.__class__.__name__, "param": f'speed={speed},voice={voice},input={gen_text}', "code": 400}}), 500
+
+    model_choice='F5-TTS'
+
+    try:
+        if model_choice not in loaded_models:
+            loaded_models[model_choice] = load_model2(repo_name=model_choice)
+
+
+        model = loaded_models[model_choice]
+
+        vocoder = load_vocoder(vocoder_name='vocos',
+            is_local=True if not SANFANG else False, 
+            local_path='./modelscache/hub/models--charactr--vocos-mel-24khz/snapshots/0feb3fdd929bcd6649e0e7c5a688cf7dd012ef21/' if not SANFANG else None
+        )
+
+        
+        main_voice = {"ref_audio": audio_file, "ref_text": ref_text}
+        voices = {"main": main_voice}
+        for voice in voices:
+            voices[voice]["ref_audio"], voices[voice]["ref_text"] = preprocess_ref_audio_text(
+                voices[voice]["ref_audio"], voices[voice]["ref_text"]
+            )
+            print("Voice:", voice)
+            print("Ref_audio:", voices[voice]["ref_audio"])
+            print("Ref_text:", voices[voice]["ref_text"])
+
+        generated_audio_segments = []
+        reg1 = r"(?=\[\w+\])"
+        chunks = re.split(reg1, gen_text)
+        reg2 = r"\[(\w+)\]"
+        for text in chunks:
+            if not text.strip():
+                continue
+            match = re.match(reg2, text)
+            if match:
+                voice = match[1]
+            else:
+                print("No voice tag found, using main.")
+                voice = "main"
+            if voice not in voices:
+                print(f"Voice {voice} not found, using main.")
+                voice = "main"
+            text = re.sub(reg2, "", text)
+            gen_text = text.strip()
+            ref_audio = voices[voice]["ref_audio"]
+            ref_text = voices[voice]["ref_text"]
+            print(f"Voice: {voice}")
+            
+            audio, final_sample_rate, spectragram = infer_process(
+                ref_audio, ref_text, gen_text, model, vocoder, mel_spec_type='vocos', speed=speed
+            )
+            generated_audio_segments.append(audio)
+        
+        # 
+        if generated_audio_segments:
+            final_wave = np.concatenate(generated_audio_segments)
+
+       
+        wave_path=TMPDIR+f'/openai-{time.time()}.wav'
+        print(f'{wave_path=}')
+        with open(wave_path, "wb") as f:
+            sf.write(f.name, final_wave, final_sample_rate)
+            print(f.name)
+
+        return send_file(wave_path, mimetype="audio/x-wav")
+    except Exception as e:
+        return jsonify({"error": {"message": f"{e}", "type": e.__class__.__name__, "param": f'speed={speed},voice={voice},input={text}', "code": 400}}), 500
+     
 
 
 if __name__ == '__main__':
