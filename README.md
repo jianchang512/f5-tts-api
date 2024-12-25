@@ -7,7 +7,7 @@
 ## 功能
 
 - 提供api接口文件 `api.py`，可对接于视频翻译项目 [pyvideotrans](https://github.com/jianchang512/pyvideotrans)
-- 提供webui界面，可在浏览器中进行声音克隆
+- 提供兼容 OpenAI TTS的接口
 - 提供windows下整合包
 
 
